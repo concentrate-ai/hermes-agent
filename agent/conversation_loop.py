@@ -1989,6 +1989,54 @@ def run_conversation(
                                 "Token persistence failed (session=%s, tokens=%d): %s",
                                 agent.session_id, total_tokens, e,
                             )
+
+                        # Usage-analytics event capture (spec art_tZvdMeCj):
+                        # one immutable row per provider API call, denormalized
+                        # so dashboard SQL needs no sessions join. Isolated in
+                        # its own try/except — analytics must never break a
+                        # conversation. estimate_usage_cost is NOT called again;
+                        # the CostResult computed above is reused.
+                        if agent._session_db and agent.session_id:
+                            try:
+                                raw_usage = canonical_usage.raw_usage
+                                agent._session_db.record_usage_event(
+                                    session_id=agent.session_id,
+                                    ts=time.time(),
+                                    source=getattr(agent, "source", None)
+                                    or (agent.platform or None)
+                                    or "cli",
+                                    user_id=getattr(agent, "_user_id", None) or None,
+                                    model=agent.model,
+                                    provider=agent.provider,
+                                    billing_mode=(
+                                        "subscription_included"
+                                        if cost_result.status == "included" else None
+                                    ),
+                                    api_status="ok",
+                                    error_class=None,
+                                    attempt=1,
+                                    input_tokens=canonical_usage.input_tokens,
+                                    output_tokens=canonical_usage.output_tokens,
+                                    cache_read_tokens=canonical_usage.cache_read_tokens,
+                                    cache_write_tokens=canonical_usage.cache_write_tokens,
+                                    reasoning_tokens=canonical_usage.reasoning_tokens,
+                                    estimated_cost_usd=(
+                                        float(cost_result.amount_usd)
+                                        if cost_result.amount_usd is not None else None
+                                    ),
+                                    cost_status=cost_result.status,
+                                    cost_source=cost_result.source,
+                                    pricing_version=cost_result.pricing_version,
+                                    raw_usage=(
+                                        json.dumps(raw_usage)
+                                        if raw_usage is not None else None
+                                    ),
+                                )
+                            except Exception as e:
+                                logger.debug(
+                                    "Usage event capture failed (session=%s): %s",
+                                    agent.session_id, e,
+                                )
                     
                     if agent.verbose_logging:
                         logging.debug(f"Token usage: prompt={usage_dict['prompt_tokens']:,}, completion={usage_dict['completion_tokens']:,}, total={usage_dict['total_tokens']:,}")
