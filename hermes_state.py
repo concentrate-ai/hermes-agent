@@ -306,6 +306,36 @@ CREATE INDEX IF NOT EXISTS idx_sessions_parent ON sessions(parent_session_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_started ON sessions(started_at DESC);
 CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id, timestamp);
 CREATE INDEX IF NOT EXISTS idx_compression_locks_expires ON compression_locks(expires_at);
+
+-- Token Usage Analytics Dashboard (spec art_tZvdMeCj): one immutable row
+-- per provider API call. source/user_id/model are denormalized from
+-- sessions at capture so dashboard SQL never fans out through a join.
+CREATE TABLE IF NOT EXISTS usage_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts REAL NOT NULL,
+    session_id TEXT NOT NULL,
+    source TEXT,
+    user_id TEXT,
+    model TEXT,
+    provider TEXT,
+    billing_mode TEXT,
+    api_status TEXT,
+    error_class TEXT,
+    attempt INTEGER NOT NULL DEFAULT 1,
+    input_tokens INTEGER NOT NULL DEFAULT 0,
+    output_tokens INTEGER NOT NULL DEFAULT 0,
+    cache_read_tokens INTEGER NOT NULL DEFAULT 0,
+    cache_write_tokens INTEGER NOT NULL DEFAULT 0,
+    reasoning_tokens INTEGER NOT NULL DEFAULT 0,
+    estimated_cost_usd REAL,
+    cost_status TEXT,
+    cost_source TEXT,
+    pricing_version TEXT,
+    raw_usage TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_usage_events_ts ON usage_events(ts);
+CREATE INDEX IF NOT EXISTS idx_usage_events_model_ts ON usage_events(model, ts);
 """
 
 # Indexes that reference columns added in later schema versions must be
@@ -1125,6 +1155,56 @@ class SessionDB:
             conn.execute(
                 "UPDATE sessions SET model = ? WHERE id = ?",
                 (model, session_id),
+            )
+        self._execute_write(_do)
+
+    def record_usage_event(
+        self,
+        session_id: str,
+        ts: float,
+        source: Optional[str] = None,
+        user_id: Optional[str] = None,
+        model: Optional[str] = None,
+        provider: Optional[str] = None,
+        billing_mode: Optional[str] = None,
+        api_status: Optional[str] = None,
+        error_class: Optional[str] = None,
+        attempt: int = 1,
+        input_tokens: int = 0,
+        output_tokens: int = 0,
+        cache_read_tokens: int = 0,
+        cache_write_tokens: int = 0,
+        reasoning_tokens: int = 0,
+        estimated_cost_usd: Optional[float] = None,
+        cost_status: Optional[str] = None,
+        cost_source: Optional[str] = None,
+        pricing_version: Optional[str] = None,
+        raw_usage: Optional[str] = None,
+    ) -> None:
+        """Insert one usage_events row (one per provider API call).
+
+        Analytics-only: failures must never break a conversation or touch
+        session/message state, so callers wrap this in its own try/except.
+        """
+        def _do(conn):
+            conn.execute(
+                """INSERT INTO usage_events (
+                       ts, session_id, source, user_id, model, provider,
+                       billing_mode, api_status, error_class, attempt,
+                       input_tokens, output_tokens, cache_read_tokens,
+                       cache_write_tokens, reasoning_tokens,
+                       estimated_cost_usd, cost_status, cost_source,
+                       pricing_version, raw_usage)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                           ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    ts, session_id, source, user_id, model, provider,
+                    billing_mode, api_status, error_class, attempt,
+                    input_tokens, output_tokens, cache_read_tokens,
+                    cache_write_tokens, reasoning_tokens,
+                    estimated_cost_usd, cost_status, cost_source,
+                    pricing_version, raw_usage,
+                ),
             )
         self._execute_write(_do)
 
