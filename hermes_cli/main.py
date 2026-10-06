@@ -6478,6 +6478,13 @@ def cmd_backup(args):
         run_backup(args)
 
 
+def cmd_usage_report(args):
+    """Render the token-usage analytics HTML report (one-shot, no server)."""
+    from hermes_cli.usage_report import run_usage_report
+
+    return run_usage_report(args)
+
+
 def cmd_import(args):
     """Restore a Hermes backup from a zip file."""
     from hermes_cli.backup import run_import
@@ -13421,6 +13428,21 @@ Examples:
         "-l", "--label", help="Label for the snapshot (only used with --quick)"
     )
     backup_parser.set_defaults(func=cmd_backup)
+
+    # =========================================================================
+    # usage-report command (token usage analytics dashboard — spec art_tZvdMeCj)
+    # =========================================================================
+    usage_report_parser = subparsers.add_parser(
+        "usage-report",
+        help="Generate a one-shot HTML token-usage analytics report",
+        description="Render a static, self-contained HTML dashboard from the "
+        "usage_events table: headline totals, hourly/daily trends, per-model "
+        "and per-source breakdowns, cache economics, and the anomaly feed. "
+        "No server is started — the report is written to one file.",
+    )
+    from hermes_cli.usage_report import register_cli as _register_usage_report_cli
+    _register_usage_report_cli(usage_report_parser)
+    usage_report_parser.set_defaults(func=cmd_usage_report)
 
     # =========================================================================
     # checkpoints command

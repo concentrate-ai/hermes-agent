@@ -432,6 +432,25 @@ class UsageAggregator:
             "retry_storm_sessions": sorted(set(retry_storm_sessions)),
         }
 
+    def build_model_drills(
+        self, since_ts: float, until_ts: float, *, max_models: int = 5
+    ) -> list[dict[str, Any]]:
+        """Drill cards for the top-cost models in range (spec §Per-model drill).
+
+        Capped at ``max_models`` so a many-model deployment renders a bounded
+        report; ordering follows _per_model's est_cost_usd DESC.
+        """
+        top = (
+            self._per_model(since_ts, until_ts)[:max_models]
+        )
+        return [
+            self._model_drill(
+                str(row.get("model") or ""), since_ts, until_ts
+            )
+            for row in top
+            if row.get("model")
+        ]
+
     # -- Payload assembly -----------------------------------------------------
 
     def build_payload(self, since_ts: float, until_ts: float) -> dict[str, Any]:
