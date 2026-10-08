@@ -13,7 +13,7 @@ what correct OpenAI-compatible server behavior looks like.
 | App | Path | Demonstrates |
 | --- | --- | --- |
 | Python CLI chat | [`python-cli-chat/`](./python-cli-chat/) | Multi-turn chat, `--stream` token streaming |
-| Streaming web UI | `web-streaming-ui/` *(coming in a follow-up PR)* | SSE parsing, TTFT and tokens/sec in the browser |
+| Streaming web UI | [`web-streaming-ui/`](./web-streaming-ui/) | SSE parsing, TTFT and tokens/sec in the browser, keyless mock mode |
 | Tool-calling agent | [`tool-calling-agent/`](./tool-calling-agent/) | Tool schemas, `role: "tool"` results, agent loop with a step cap |
 
 ## Config contract
@@ -58,6 +58,33 @@ python chat.py --stream   # stream tokens as they arrive
 
 In the REPL: `/reset` clears conversation history, `/exit` (or Ctrl-D) quits.
 Missing `OPENAI_API_KEY` exits cleanly with a message instead of a traceback.
+
+## Running the streaming web UI
+
+No build step, no framework — a static page plus one ES module:
+
+```bash
+cd examples/openai-compatible/web-streaming-ui
+python -m http.server 8080
+# then open http://localhost:8080
+```
+
+Set the endpoint in the page's **Settings** panel — the same three fields as
+the env contract (base URL, API key, model), stored in `localStorage`. The
+panel is the browser twin of the environment variables: point the base URL at
+Concentrate AI's gateway, OpenAI, OpenRouter, or any compatible server.
+
+### Mock mode (no API key needed)
+
+Open the page with [`?mock=1`](http://localhost:8080/?mock=1) or flip the
+**Mock stream** toggle in Settings. A local generator then emits the identical
+SSE envelope a real server sends (`data: {…choices:[{delta:{content}}]} …
+`data: [DONE]`) over ~2 seconds — **zero network calls**. The same parser
+renders it token by token, with live TTFT and tokens/sec in the header, so the
+UI can be demoed and screenshotted without credentials.
+
+![Streaming web UI rendering the mock stream, with MOCK badge and live
+TTFT/tokens-per-sec](./mock-mode.png)
 
 ## Running the tool-calling agent
 
