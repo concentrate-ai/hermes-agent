@@ -14,7 +14,7 @@ what correct OpenAI-compatible server behavior looks like.
 | --- | --- | --- |
 | Python CLI chat | [`python-cli-chat/`](./python-cli-chat/) | Multi-turn chat, `--stream` token streaming |
 | Streaming web UI | `web-streaming-ui/` *(coming in a follow-up PR)* | SSE parsing, TTFT and tokens/sec in the browser |
-| Tool-calling agent | `tool-calling-agent/` *(coming in a follow-up PR)* | Tool schemas, `role: "tool"` results, agent loop |
+| Tool-calling agent | [`tool-calling-agent/`](./tool-calling-agent/) | Tool schemas, `role: "tool"` results, agent loop with a step cap |
 
 ## Config contract
 
@@ -58,6 +58,27 @@ python chat.py --stream   # stream tokens as they arrive
 
 In the REPL: `/reset` clears conversation history, `/exit` (or Ctrl-D) quits.
 Missing `OPENAI_API_KEY` exits cleanly with a message instead of a traceback.
+
+## Running the tool-calling agent
+
+```bash
+cd examples/openai-compatible/tool-calling-agent
+pip install -r requirements.txt
+
+export OPENAI_API_KEY="sk-..."          # required
+export OPENAI_BASE_URL="https://api.openai.com/v1"  # optional — any compatible endpoint
+export OPENAI_MODEL="gpt-4o-mini"       # optional
+
+python agent.py "What's the weather in Tokyo, and what's in /tmp?"
+```
+
+The agent registers two safe, deterministic example tools —
+`get_current_weather` (a canned demo report, not a live feed) and
+`list_directory` (read-only directory listing). It sends the tool schemas with
+the request; while the model answers with `tool_calls`, each tool executes and
+its `role: "tool"` result (keyed by `tool_call_id`) joins the history for the
+next call. The first plain-text reply ends the loop, and a hard cap of 8 model
+calls stops runaway loops with a clean `SystemExit`.
 
 ## Tests
 
