@@ -1,0 +1,71 @@
+# OpenAI-compatible sample apps
+
+Three small, self-contained clients that run against **any** OpenAI-compatible
+endpoint — OpenAI, a gateway, a router, a local server — by changing
+environment variables only. No code edits, no config files, no SDK specifics.
+
+These are reference *consumers*: the minimum a real client needs (chat,
+streaming, tool calls). They complement the conformance suite, which defines
+what correct OpenAI-compatible server behavior looks like.
+
+## Apps
+
+| App | Path | Demonstrates |
+| --- | --- | --- |
+| Python CLI chat | [`python-cli-chat/`](./python-cli-chat/) | Multi-turn chat, `--stream` token streaming |
+| Streaming web UI | `web-streaming-ui/` *(coming in a follow-up PR)* | SSE parsing, TTFT and tokens/sec in the browser |
+| Tool-calling agent | `tool-calling-agent/` *(coming in a follow-up PR)* | Tool schemas, `role: "tool"` results, agent loop |
+
+## Config contract
+
+All three apps read the same three environment variables and nothing else:
+
+| Variable | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `OPENAI_BASE_URL` | no | `https://api.openai.com/v1` | Root URL of any OpenAI-compatible API |
+| `OPENAI_API_KEY` | **yes** | — | Bearer credential sent to that endpoint |
+| `OPENAI_MODEL` | no | per-app default (`gpt-4o-mini` for the CLI) | Model id passed in the request body |
+
+Nothing is hard-coded to one provider. Concentrate AI is a **configuration
+choice**, not a special case — point `OPENAI_BASE_URL` at its gateway and every
+app works:
+
+```bash
+export OPENAI_BASE_URL="https://<your-concentrate-gateway-host>/v1"
+export OPENAI_API_KEY="sk-..."
+export OPENAI_MODEL="gpt-4o-mini"
+```
+
+Switching to OpenAI proper, OpenRouter, or a local server is the same three
+variables with different values. The samples mirror the power-user contract
+already used by `hermes_cli/config.py` (`OPENAI_API_KEY` / `OPENAI_BASE_URL`)
+and `cli-config.yaml.example`'s `provider: "custom"` semantics, but they import
+nothing from hermes core and are fully decoupled from the repo's build system.
+
+## Running the Python CLI chat
+
+```bash
+cd examples/openai-compatible/python-cli-chat
+pip install -r requirements.txt
+
+export OPENAI_API_KEY="sk-..."          # required
+export OPENAI_BASE_URL="https://api.openai.com/v1"  # optional — any compatible endpoint
+export OPENAI_MODEL="gpt-4o-mini"       # optional
+
+python chat.py            # request/response mode
+python chat.py --stream   # stream tokens as they arrive
+```
+
+In the REPL: `/reset` clears conversation history, `/exit` (or Ctrl-D) quits.
+Missing `OPENAI_API_KEY` exits cleanly with a message instead of a traceback.
+
+## Tests
+
+Python apps have mirrored pytest suites under `tests/examples/`, using a fake
+OpenAI-compatible HTTP server (no network, no API key). Live-endpoint tests
+exist behind the `integration` pytest marker and are excluded from default
+runs; run them manually when credentials are available:
+
+```bash
+scripts/run_tests.sh tests/examples/
+```

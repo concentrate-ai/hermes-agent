@@ -1,0 +1,3 @@
+# Sample-app dependencies, decoupled from the repo's pyproject.toml.
+# Pinned to the same openai version the repo's core deps use.
+openai==2.24.0
