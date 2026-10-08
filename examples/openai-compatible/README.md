@@ -86,27 +86,6 @@ UI can be demoed and screenshotted without credentials.
 ![Streaming web UI rendering the mock stream, with MOCK badge and live
 TTFT/tokens-per-sec](./mock-mode.png)
 
-## Running the tool-calling agent
-
-```bash
-cd examples/openai-compatible/tool-calling-agent
-pip install -r requirements.txt
-
-export OPENAI_API_KEY="sk-..."          # required
-export OPENAI_BASE_URL="https://api.openai.com/v1"  # optional — any compatible endpoint
-export OPENAI_MODEL="gpt-4o-mini"       # optional
-
-python agent.py "What's the weather in Tokyo, and what's in /tmp?"
-```
-
-The agent registers two safe, deterministic example tools —
-`get_current_weather` (a canned demo report, not a live feed) and
-`list_directory` (read-only directory listing). It sends the tool schemas with
-the request; while the model answers with `tool_calls`, each tool executes and
-its `role: "tool"` result (keyed by `tool_call_id`) joins the history for the
-next call. The first plain-text reply ends the loop, and a hard cap of 8 model
-calls stops runaway loops with a clean `SystemExit`.
-
 ## Tests
 
 Python apps have mirrored pytest suites under `tests/examples/`, using a fake

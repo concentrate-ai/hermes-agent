@@ -70,7 +70,11 @@ def test_index_html_has_required_elements(index_html: str, element_id: str) -> N
 def test_index_html_has_no_build_step_or_workspace_membership() -> None:
     assert not (UI_DIR / "package.json").exists()
     assert not (UI_DIR / "node_modules").exists()
-    assert sorted(p.name for p in UI_DIR.iterdir()) == ["index.html", "main.js"]
+    assert sorted(p.name for p in UI_DIR.iterdir()) == [
+        "index.html",
+        "main.js",
+        "mock-mode.png",  # mock-mode screenshot, referenced by the README
+    ]
 
 
 # ---------------------------------------------------------------------------
