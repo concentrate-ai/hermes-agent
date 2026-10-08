@@ -30,7 +30,9 @@ test_durations.json
 tmp/
 temp_vision_images/
 hermes-*/*
-examples/
+# Ignore ad-hoc example scripts, except the curated OpenAI-compatible samples.
+examples/*
+!examples/openai-compatible/
 tests/quick_test_dataset.jsonl
 tests/sample_dataset.jsonl
 run_datagen_kimik2-thinking.sh
